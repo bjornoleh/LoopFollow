@@ -671,7 +671,13 @@ extension MainViewController {
         let startMinute = startCalendar.component(.minute, from: start!)
         let startMinutes = (60 * startHour) + startMinute
         
-        if todayMinutes >= startMinutes {
+        let end = UserDefaultsRepository.quietHourEnd.value
+        let endCalendar = Calendar.current
+        let endHour = endCalendar.component(.hour, from: end!)
+        let endMinute = endCalendar.component(.minute, from: end!)
+        let endMinutes = (60 * endHour) + endMinute
+        
+        if todayMinutes >= startMinutes || todayMinutes < endMinutes {
             let tomorrow = Date().addingTimeInterval(86400)
             let tomorrowCalendar = Calendar.current
             let end = UserDefaultsRepository.quietHourEnd.value
@@ -687,8 +693,8 @@ extension MainViewController {
             let snoozeCalendar = Calendar.current
             let snoozeTime = snoozeCalendar.date(from: components)
             
-            guard let snoozer = self.tabBarController!.viewControllers?[2] as? SnoozeViewController else { return }
-            snoozer.setQuietHours(snoozeTime: snoozeTime!)
+            //guard let snoozer = self.tabBarController!.viewControllers?[2] as? SnoozeViewController else { return }
+            //snoozer.setQuietHours(snoozeTime: snoozeTime!)
             UserDefaultsRepository.nightTime.value = true
         } else {
             UserDefaultsRepository.nightTime.value = false

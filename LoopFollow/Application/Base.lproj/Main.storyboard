@@ -401,7 +401,7 @@
                                                                 <rect key="frame" x="0.0" y="0.0" width="0.0" height="32"/>
                                                                 <color key="backgroundColor" systemColor="labelColor"/>
                                                                 <fontDescription key="fontDescription" type="system" pointSize="40"/>
-                                                                <state key="normal" title="Snooze">
+                                                                <state key="normal" title="Snooze Endre">
                                                                     <color key="titleColor" systemColor="systemBackgroundColor"/>
                                                                 </state>
                                                                 <variation key="heightClass=regular-widthClass=compact">

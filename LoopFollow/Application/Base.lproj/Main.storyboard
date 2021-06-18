@@ -395,13 +395,13 @@
                                                         </variation>
                                                     </label>
                                                     <stackView opaque="NO" contentMode="scaleToFill" spacing="30" translatesAutoresizingMaskIntoConstraints="NO" id="1U2-dW-S8S">
-                                                        <rect key="frame" x="0.0" y="0.0" width="328.5" height="0.0"/>
+                                                        <rect key="frame" x="0.0" y="0.0" width="190.66666666666666" height="0.0"/>
                                                         <subviews>
                                                             <button hidden="YES" opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Meu-VT-byv">
                                                                 <rect key="frame" x="0.0" y="0.0" width="0.0" height="32"/>
                                                                 <color key="backgroundColor" systemColor="labelColor"/>
                                                                 <fontDescription key="fontDescription" type="system" pointSize="40"/>
-                                                                <state key="normal" title="Snooze">
+                                                                <state key="normal" title="Snooze Nina">
                                                                     <color key="titleColor" systemColor="systemBackgroundColor"/>
                                                                 </state>
                                                                 <variation key="heightClass=regular-widthClass=compact">

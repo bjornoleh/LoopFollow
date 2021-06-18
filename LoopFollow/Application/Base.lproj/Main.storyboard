@@ -291,7 +291,7 @@
                             <constraint firstItem="mJy-Ly-Jze" firstAttribute="top" secondItem="PQr-Ze-W5v" secondAttribute="top" constant="8" id="xem-Lc-bdU"/>
                         </constraints>
                     </view>
-                    <tabBarItem key="tabBarItem" title="Home" image="house" catalog="system" id="acW-dT-cKf" userLabel="Home"/>
+                    <tabBarItem key="tabBarItem" title="Nina" image="n.square" catalog="system" id="acW-dT-cKf" userLabel="Home"/>
                     <connections>
                         <outlet property="BGChart" destination="51B-JU-npv" id="oF1-UA-KHE"/>
                         <outlet property="BGChartFull" destination="Nml-lr-dgQ" id="Z21-fG-GK9"/>
@@ -581,7 +581,7 @@
     <resources>
         <image name="alarm" catalog="system" width="124" height="128"/>
         <image name="gear" catalog="system" width="128" height="119"/>
-        <image name="house" catalog="system" width="128" height="106"/>
+        <image name="n.square" catalog="system" width="128" height="114"/>
         <image name="safari" catalog="system" width="128" height="121"/>
         <image name="zzz" catalog="system" width="121" height="128"/>
         <systemColor name="labelColor">

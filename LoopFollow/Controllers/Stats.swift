@@ -21,6 +21,7 @@ class StatsData {
     var avgBG: Float
     var a1C: Float
     var stdDev: Float
+    var bgDataCount: Int
     var pie: [DataStructs.pieData]
     
     init(bgData: [ShareGlucoseData]) {
@@ -57,7 +58,9 @@ class StatsData {
         ]
 
         // Set Average
-        avgBG = Float(totalGlucose / bgData.count)
+        bgDataCount = bgData.count
+        if bgDataCount < 1 { bgDataCount = 1 }
+        avgBG = Float(totalGlucose / bgDataCount)
 
         // compute std dev (sigma)
         var partialSum: Float = 0;

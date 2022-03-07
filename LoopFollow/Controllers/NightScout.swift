@@ -489,10 +489,16 @@ extension MainViewController {
             }
         }
         
-        // Loop
-        if let lastLoopRecord = lastDeviceStatus?["loop"] as! [String : AnyObject]? {
+        
+        // loop use lastDeviceStatus?["loop"]
+        //if let lastLoopRecord = lastDeviceStatus?["loop"] as! [String : AnyObject]? {
+        // FreeAPS-X Entry use openaps
+        if let lastLoopRecord = lastDeviceStatus?["openaps"] as! [String : AnyObject]? {
             //print("Loop: \(lastLoopRecord)")
-            if let lastLoopTime = formatter.date(from: (lastLoopRecord["timestamp"] as! String))?.timeIntervalSince1970  {
+        // loop use lastLoopRecord["timestamp"]
+        //if let lastLoopTime = formatter.date(from: (lastLoopRecord["timestamp"] as! String))?.timeIntervalSince1970  {
+        // FreeAPS-X Entry use lastDeviceStatus?["created_at"]
+            if let lastLoopTime = formatter.date(from: (lastDeviceStatus?["created_at"] as! String))?.timeIntervalSince1970  {
                 UserDefaultsRepository.alertLastLoopTime.value = lastLoopTime
                 if UserDefaultsRepository.debugLog.value { self.writeDebugLog(value: "lastLoopTime: " + String(lastLoopTime)) }
                 if let failure = lastLoopRecord["failureReason"] {
@@ -512,12 +518,19 @@ extension MainViewController {
                         tableData[0].value = String(format:"%.2f", (iobdata["iob"] as! Double))
                         latestIOB = String(format:"%.2f", (iobdata["iob"] as! Double))
                     }
-                    if let cobdata = lastLoopRecord["cob"] as? [String:AnyObject] {
-                        tableData[1].value = String(format:"%.0f", cobdata["cob"] as! Double)
-                        latestCOB = String(format:"%.0f", cobdata["cob"] as! Double)
+                  //loop App
+                  //  if let cobdata = lastLoopRecord["cob"] as? [String:AnyObject] {
+                  //      tableData[1].value = String(format:"%.0f", cobdata["cob"] as! Double)
+                  //      latestCOB = String(format:"%.0f", cobdata["cob"] as! Double)
+                  //  }
+                  //FreeAPS-X  
+                      if let cobdata = lastLoopRecord["enacted"] as? [String:AnyObject] {
+                        tableData[1].value = String(format:"%.0f", cobdata["COB"] as! Double)
+                        latestCOB = String(format:"%.0f", cobdata["COB"] as! Double)
                     }
+                  
                     if let predictdata = lastLoopRecord["predicted"] as? [String:AnyObject] {
-                        let prediction = predictdata["values"] as! [Int]
+                        let prediction = predictdata["values"] as! [Double]
                         PredictionLabel.text = bgUnits.toDisplayUnits(String(Int(prediction.last!)))
                         PredictionLabel.textColor = UIColor.systemPurple
                         if UserDefaultsRepository.downloadPrediction.value && latestLoopTime < lastLoopTime {
@@ -527,7 +540,7 @@ extension MainViewController {
                             var i = 0
                             while i <= toLoad {
                                 if i < prediction.count {
-                                    let prediction = ShareGlucoseData(sgv: prediction[i], date: predictionTime, direction: "flat")
+                                    let prediction = ShareGlucoseData(sgv: Int(round(prediction[i])), date: predictionTime, direction: "flat")
                                     predictionData.append(prediction)
                                     predictionTime += 300
                                 }
@@ -833,7 +846,7 @@ extension MainViewController {
             return
         }
         if jsonDeviceStatus[keyPath: "message"] != nil { return }
-        let basal = try jsonDeviceStatus[keyPath: "store.Default.basal"] as! NSArray
+        let basal = try jsonDeviceStatus[keyPath: "store.default.basal"] as! NSArray
         basalProfile.removeAll()
         for i in 0..<basal.count {
             let dict = basal[i] as! Dictionary<String, Any>
@@ -994,6 +1007,8 @@ extension MainViewController {
                 case "Temp Basal":
                     tempBasal.append(entry!)
                 case "Correction Bolus":
+                    bolus.append(entry!)
+                case "Bolus":
                     bolus.append(entry!)
                 case "Meal Bolus":
                     carbs.append(entry!)

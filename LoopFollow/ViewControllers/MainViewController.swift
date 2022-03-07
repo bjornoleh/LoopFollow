@@ -420,9 +420,9 @@ class MainViewController: UIViewController, UITableViewDataSource, ChartViewDele
         if bgData.count > 0 {
             let deltaTime = (TimeInterval(Date().timeIntervalSince1970)-bgData[bgData.count - 1].date) / 60
             minAgoBG = Double(TimeInterval(Date().timeIntervalSince1970)-bgData[bgData.count - 1].date)
-            MinAgoText.text = String(Int(deltaTime)) + " min ago"
-            snoozer.MinAgoLabel.text = String(Int(deltaTime)) + " min ago"
-            latestMinAgoString = String(Int(deltaTime)) + " min ago"
+            MinAgoText.text = String(Int(deltaTime)) + " min"
+            snoozer.MinAgoLabel.text = String(Int(deltaTime)) + " min"
+            latestMinAgoString = String(Int(deltaTime)) + " min"
         } else {
             MinAgoText.text = ""
             snoozer.MinAgoLabel.text = ""

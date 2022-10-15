@@ -310,7 +310,9 @@ extension MainViewController {
         
         // Setup the main graph overall details
         BGChart.xAxis.valueFormatter = ChartXValueFormatter()
-        BGChart.xAxis.granularity = 1800
+        //BGChart.xAxis.granularity = 1800
+        //Auggie changing to 1 hour spacing of the graph
+        BGChart.xAxis.granularity = 3600
         BGChart.xAxis.labelTextColor = NSUIColor.label
         BGChart.xAxis.labelPosition = XAxis.LabelPosition.bottom
         BGChart.xAxis.drawGridLinesEnabled = false
@@ -527,7 +529,7 @@ extension MainViewController {
         BGChart.moveViewToAnimated(xValue: dateTimeUtils.getNowTimeIntervalUTC() - (BGChart.visibleXRange * 0.7), yValue: 0.0, axis: .right, duration: 1, easingOption: .easeInBack)
     }
     
-    func updatePredictionGraph() {
+    func updatePredictionGraph(graphtype: String, color: UIColor) {
         let dataIndex = 1
         var mainChart = BGChart.lineData!.dataSets[dataIndex] as! LineChartDataSet
         var smallChart = BGChartFull.lineData!.dataSets[dataIndex] as! LineChartDataSet
@@ -542,22 +544,26 @@ extension MainViewController {
             if Float(predictionVal) > topBG - maxBGOffset {
                 topBG = Float(predictionVal) + maxBGOffset
             }
-
+            //Auggie some modifications for how colors are drawn here - passed as a parameter for more efficient code now that we pick from 4
             if i == 0 {
                 if UserDefaultsRepository.showDots.value {
-                    colors.append(NSUIColor.systemPurple.withAlphaComponent(0.0))
+                    //colors.append(NSUIColor.systemPurple.withAlphaComponent(0.0))
+                    colors.append(color.withAlphaComponent(0.0))
                 } else {
-                    colors.append(NSUIColor.systemPurple.withAlphaComponent(1.0))
+                    //colors.append(NSUIColor.systemPurple.withAlphaComponent(1.0))
+                    colors.append(color.withAlphaComponent(1.0))
                 }
-                
             } else if predictionVal > 400 {
-                predictionVal = 400
-                colors.append(NSUIColor.systemYellow)
+                //predictionVal = 400
+                //colors.append(NSUIColor.systemYellow)
+                colors.append(color)
             } else if predictionVal < 0 {
-                predictionVal = 0
-                colors.append(NSUIColor.systemRed)
+                //predictionVal = 0
+                //colors.append(NSUIColor.systemRed)
+                colors.append(color)
             } else {
-                colors.append(NSUIColor.systemPurple)
+                //colors.append(NSUIColor.systemRed)
+                colors.append(color)
             }
             let value = ChartDataEntry(x: predictionData[i].date, y: predictionVal, data: formatPillText(line1: bgUnits.toDisplayUnits(String(predictionData[i].sgv)), time: predictionData[i].date))
             mainChart.addEntry(value)

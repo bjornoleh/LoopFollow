@@ -1,5 +1,6 @@
 ## Loop Follow 
-![screenshot](https://media.discordapp.net/attachments/1021736902778421269/1022566204000436338/IMG_6AF061625BCA-1.jpeg?width=402&height=870)
+<img src="https://user-images.githubusercontent.com/659845/195993495-aa944d32-4129-4a80-8b5b-6fb3bb6e1171.PNG" width="402" height="870">
+
 
 ### Fork from https://github.com/jonfawcett/LoopFollow - all credit to Jon Fawcett for Loop Follow. Updates here are tweaks to support FAX/OpenAPS looping, some minor visual updates for personal preference/device support, and small features for additional data on Apple Watch/calendar entries.
 

@@ -522,10 +522,10 @@ extension MainViewController {
                         tableData[0].value = String(format:"%.2f", (iobdata["iob"] as! Double))
                         latestIOB = String(format:"%.2f", (iobdata["iob"] as! Double))
                     }
-                    //Auggie use just one decimal point for COB reporting
+                    // use no decimals for COB
                     if let cobdata = lastLoopRecord["enacted"] as? [String:AnyObject] {
-                        tableData[1].value = String(format:"%.1f", cobdata["COB"] as! Double)
-                        latestCOB = String(format:"%.1f", cobdata["COB"] as! Double)
+                        tableData[1].value = String(format:"%.0f", cobdata["COB"] as! Double)
+                        latestCOB = String(format:"%.0f", cobdata["COB"] as! Double)
                     }
                     //Auggie added autosens override sensitivity
                     if let autosensdata = lastLoopRecord["enacted"] as? [String:AnyObject] {

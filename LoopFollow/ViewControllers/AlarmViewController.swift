@@ -1619,7 +1619,7 @@ class AlarmViewController: FormViewController {
         
             <<< StepperRow("alertMissedReading") { row in
                 row.title = "Time"
-                row.cell.stepper.stepValue = 5
+                row.cell.stepper.stepValue = 1
                 row.cell.stepper.minimumValue = 10
                 row.cell.stepper.maximumValue = 120
                 row.value = Double(UserDefaultsRepository.alertMissedReading.value)
@@ -1765,7 +1765,7 @@ class AlarmViewController: FormViewController {
             row.title = "Time"
             //Auggie allowing for a bit more granularity in not looping alarms
             row.cell.stepper.stepValue = 1
-            row.cell.stepper.minimumValue = 5
+            row.cell.stepper.minimumValue = 10
             row.cell.stepper.maximumValue = 60
             row.value = Double(UserDefaultsRepository.alertNotLooping.value)
             row.displayValueFor = { value in

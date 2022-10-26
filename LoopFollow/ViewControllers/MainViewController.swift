@@ -129,6 +129,8 @@ class MainViewController: UIViewController, UITableViewDataSource, ChartViewDele
     var lastOverrideEndTime: TimeInterval = 0
     var topBG: Float = UserDefaultsRepository.minBGScale.value
     var lastOverrideAlarm: TimeInterval = 0
+    //Auggie add A1C to watch display
+    var latestA1C = ""
     
     // share
     var bgDataShare: [ShareGlucoseData] = []
@@ -148,13 +150,16 @@ class MainViewController: UIViewController, UITableViewDataSource, ChartViewDele
         UserDefaultsRepository.infoNames.value.append("IOB")
         UserDefaultsRepository.infoNames.value.append("COB")
         UserDefaultsRepository.infoNames.value.append("Basal")
-        UserDefaultsRepository.infoNames.value.append("Override")
+        //Auggie rename for FAX
+        UserDefaultsRepository.infoNames.value.append("Autosens")
         UserDefaultsRepository.infoNames.value.append("Battery")
-        UserDefaultsRepository.infoNames.value.append("Pump")
+        UserDefaultsRepository.infoNames.value.append("Reservoir")
         UserDefaultsRepository.infoNames.value.append("SAGE")
         UserDefaultsRepository.infoNames.value.append("CAGE")
-        UserDefaultsRepository.infoNames.value.append("Rec. Bolus")
-        UserDefaultsRepository.infoNames.value.append("Pred.")
+        //Auggie rename for preference
+        UserDefaultsRepository.infoNames.value.append("Needed")
+        //Auggie rename for preference
+        UserDefaultsRepository.infoNames.value.append("Min/Max")
         
         // Reset deprecated settings
         UserDefaultsRepository.debugLog.value = false;
@@ -164,7 +169,8 @@ class MainViewController: UIViewController, UITableViewDataSource, ChartViewDele
         //infoTable.layer.borderColor = UIColor.darkGray.cgColor
         //infoTable.layer.borderWidth = 1.0
         //infoTable.layer.cornerRadius = 6
-        infoTable.rowHeight = 24
+        //Auggie use a smaller row height for mini devices (iP13M for instance)
+        infoTable.rowHeight = 21
         infoTable.dataSource = self
         infoTable.tableFooterView = UIView(frame: .zero) // get rid of extra rows
         infoTable.bounces = false
@@ -651,6 +657,35 @@ class MainViewController: UIViewController, UITableViewDataSource, ChartViewDele
                 if self.latestIOB != "" {
                     iob = self.latestIOB
                 }
+                
+            
+                //Auggie - do some work here for additional stats on watch/calendar entry
+                var lastDayOfData = self.bgData
+                let graphHours = 24 * UserDefaultsRepository.downloadDays.value
+                // If we loaded more than 1 day of data, only use the last day for the stats
+                if graphHours > 24 {
+                    let oneDayAgo = dateTimeUtils.getTimeIntervalNHoursAgo(N: 24)
+                    var startIndex = 0
+                    while startIndex < self.bgData.count && self.bgData[startIndex].date < oneDayAgo {
+                        startIndex += 1
+                    }
+                    lastDayOfData = Array(self.bgData.dropFirst(startIndex))
+                }
+                
+                let stats = StatsData(bgData: lastDayOfData)
+                
+                //Auggie make eA1C an option
+                let a1c = "\(round(stats.a1C * 10) / 10.0)"
+                eventTitle = eventTitle.replacingOccurrences(of: "%A1C%", with: a1c)
+            
+                //Auggie make time in range an option
+                let tir = String(format:"%.1f%", stats.percentRange)// + "%"
+                eventTitle = eventTitle.replacingOccurrences(of: "%TIR%", with: tir)
+                
+                //Auggie make average BG an option
+                let avg = bgUnits.toDisplayUnits(String(format:"%.0f%", stats.avgBG))
+                eventTitle = eventTitle.replacingOccurrences(of: "%AVG%", with: avg)
+            
                 eventTitle = eventTitle.replacingOccurrences(of: "%MINAGO%", with: minAgo)
                 eventTitle = eventTitle.replacingOccurrences(of: "%IOB%", with: iob)
                 eventTitle = eventTitle.replacingOccurrences(of: "%COB%", with: cob)

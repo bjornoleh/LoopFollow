@@ -480,11 +480,13 @@ extension MainViewController {
                                    .withTime,
                                    .withDashSeparatorInDate,
                                    .withColonSeparatorInTime]
+        //Auggie doing a little different formatting for U remaining in pump
+        //Auggie show to one decimal point to match what Omnipod reports
         if let lastPumpRecord = lastDeviceStatus?["pump"] as! [String : AnyObject]? {
             if let lastPumpTime = formatter.date(from: (lastPumpRecord["clock"] as! String))?.timeIntervalSince1970  {
                 if let reservoirData = lastPumpRecord["reservoir"] as? Double {
                     latestPumpVolume = reservoirData
-                    tableData[5].value = String(format:"%.0f", reservoirData) + "U"
+                    tableData[5].value = String(format:"%.1f", reservoirData) + "U"
                 } else {
                     latestPumpVolume = 50.0
                     tableData[5].value = "50+U"
@@ -497,15 +499,9 @@ extension MainViewController {
             }
         }
         
-        
-        // loop use lastDeviceStatus?["loop"]
-        //if let lastLoopRecord = lastDeviceStatus?["loop"] as! [String : AnyObject]? {
-        // FreeAPS-X Entry use openaps
+        // Loop swapping over to FAX/OpenAPS here
         if let lastLoopRecord = lastDeviceStatus?["openaps"] as! [String : AnyObject]? {
             //print("Loop: \(lastLoopRecord)")
-        // loop use lastLoopRecord["timestamp"]
-        //if let lastLoopTime = formatter.date(from: (lastLoopRecord["timestamp"] as! String))?.timeIntervalSince1970  {
-        // FreeAPS-X Entry use lastDeviceStatus?["created_at"]
             if let lastLoopTime = formatter.date(from: (lastDeviceStatus?["created_at"] as! String))?.timeIntervalSince1970  {
                 UserDefaultsRepository.alertLastLoopTime.value = lastLoopTime
                 if UserDefaultsRepository.debugLog.value { self.writeDebugLog(value: "lastLoopTime: " + String(lastLoopTime)) }
@@ -526,45 +522,101 @@ extension MainViewController {
                         tableData[0].value = String(format:"%.2f", (iobdata["iob"] as! Double))
                         latestIOB = String(format:"%.2f", (iobdata["iob"] as! Double))
                     }
-                  //loop App
-                  //  if let cobdata = lastLoopRecord["cob"] as? [String:AnyObject] {
-                  //      tableData[1].value = String(format:"%.0f", cobdata["cob"] as! Double)
-                  //      latestCOB = String(format:"%.0f", cobdata["cob"] as! Double)
-                  //  }
-                  //FreeAPS-X  
-                      if let cobdata = lastLoopRecord["enacted"] as? [String:AnyObject] {
-                        tableData[1].value = String(format:"%.0f", cobdata["COB"] as! Double)
-                        latestCOB = String(format:"%.0f", cobdata["COB"] as! Double)
+                    //Auggie use just one decimal point for COB reporting
+                    if let cobdata = lastLoopRecord["enacted"] as? [String:AnyObject] {
+                        tableData[1].value = String(format:"%.1f", cobdata["COB"] as! Double)
+                        latestCOB = String(format:"%.1f", cobdata["COB"] as! Double)
                     }
-                  
-                    if let predictdata = lastLoopRecord["predicted"] as? [String:AnyObject] {
-                        let prediction = predictdata["values"] as! [Double]
-                        PredictionLabel.text = bgUnits.toDisplayUnits(String(Int(prediction.last!)))
-                        PredictionLabel.textColor = UIColor.systemPurple
-                        if UserDefaultsRepository.downloadPrediction.value && latestLoopTime < lastLoopTime {
-                            predictionData.removeAll()
-                            var predictionTime = lastLoopTime
-                            let toLoad = Int(UserDefaultsRepository.predictionToLoad.value * 12)
-                            var i = 0
-                            while i <= toLoad {
-                                if i < prediction.count {
-                                    let prediction = ShareGlucoseData(sgv: Int(round(prediction[i])), date: predictionTime, direction: "flat")
-                                    predictionData.append(prediction)
-                                    predictionTime += 300
-                                }
-                                i += 1
+                    //Auggie added autosens override sensitivity
+                    if let autosensdata = lastLoopRecord["enacted"] as? [String:AnyObject] {
+                        let sens = autosensdata["sensitivityRatio"] as! Double * 100.0
+                        tableData[3].value = String(format:"%.0f", sens) + "%"
+                    }
+                    //Auggie added pending/required insulin
+                    if let recbolusdata = lastLoopRecord["enacted"] as? [String:AnyObject] {
+                        tableData[8].value = String(format:"%.2fU", recbolusdata["insulinReq"] as! Double)
+                    }
+                   
+                    
+                    /* Auggie - perhaps use a form of this at some point for multiple lines on graph
+                     if let uamdata = predbgdata["UAM"] as? [Double] {
+                         let uamgraphdata = uamdata
+                     }
+                     else if let cobdata = predbgdata["COB"] as? [Double] {
+                         let cobgraphdata = cobdata
+                     }
+                     else if let iobdata = predbgdata["IOB"] as? [Double]{
+                         let iobgraphdata = iobdata
+                     }
+                     else {
+                         let ztdata = predbgdata["ZT"] as? [Double]
+                         let ztgraphdata = ztdata
+                     }
+                     */
+                    
+                    //Auggie added if/else conditions and parsing into the various predBGs
+                    //Auggie picks COB prediction if available, else UAM, else IOB, else ZT
+                    //Ideal is to predict all 4 in Loop Follow but this is a quick start
+                    var graphtype = ""
+                    var predictioncolor = UIColor.systemGray
+                    PredictionLabel.textColor = predictioncolor
+                    if let enactdata = lastLoopRecord["enacted"] as? [String:AnyObject] {
+                        if let predbgdata = enactdata["predBGs"] as? [String:AnyObject] {
+                            if predbgdata["COB"] != nil {
+                                graphtype="COB"
+                                predictioncolor = UIColor.systemYellow
+                                PredictionLabel.textColor = predictioncolor
+                            }
+                            else if predbgdata["UAM"] != nil {
+                                graphtype="UAM"
+                                predictioncolor = UIColor.systemOrange
+                                PredictionLabel.textColor = predictioncolor
+                            }
+                            else if predbgdata["IOB"] != nil {
+                                graphtype="IOB"
+                                predictioncolor = UIColor.systemBlue
+                                PredictionLabel.textColor = predictioncolor
+                            }
+                            else {
+                                graphtype="ZT"
+                                predictioncolor = UIColor.systemGreen
+                                PredictionLabel.textColor = predictioncolor
                             }
                             
-                            let predMin = prediction.min()
-                            let predMax = prediction.max()
-                            tableData[9].value = bgUnits.toDisplayUnits(String(predMin!)) + "/" + bgUnits.toDisplayUnits(String(predMax!))
+                            let graphdata = predbgdata[graphtype] as! [Double]
+                        
+                            //Auggie grab the eventual BG
+                            if let eventualdata = lastLoopRecord["enacted"] as? [String:AnyObject] {
+                                PredictionLabel.text = String(format:"%.0f", eventualdata["eventualBG"] as! Double)
+                            }
                             
-                            updatePredictionGraph()
-                        }
+                            if UserDefaultsRepository.downloadPrediction.value && latestLoopTime < lastLoopTime {
+                                predictionData.removeAll()
+                                var predictionTime = lastLoopTime
+                                let toLoad = Int(UserDefaultsRepository.predictionToLoad.value * 12)
+                                var i = 0
+                                while i <= toLoad {
+                                    if i < graphdata.count {
+                                        let prediction = ShareGlucoseData(sgv: Int(round(graphdata[i])), date: predictionTime, direction: "flat")
+                                        predictionData.append(prediction)
+                                        predictionTime += 300
+                                    }
+                                    i += 1
+                                }
+                                
+                            }
+                                
+                                let predMin = graphdata.min()
+                                let predMax = graphdata.max()
+                                tableData[9].value = bgUnits.toDisplayUnits(String(predMin!)) + "/" + bgUnits.toDisplayUnits(String(predMax!))
+                                
+                            updatePredictionGraph(graphtype: graphtype, color: predictioncolor)
+                            }
                     }
-                    if let recBolus = lastLoopRecord["recommendedBolus"] as? Double {
-                        tableData[8].value = String(format:"%.2fU", recBolus)
-                    }
+                    
+
+                    
+                    
                     if let loopStatus = lastLoopRecord["recommendedTempBasal"] as? [String:AnyObject] {
                         if let tempBasalTime = formatter.date(from: (loopStatus["timestamp"] as! String))?.timeIntervalSince1970 {
                             var lastBGTime = lastLoopTime
@@ -579,19 +631,22 @@ extension MainViewController {
                                 latestLoopStatusString = "⏀"
                                 if UserDefaultsRepository.debugLog.value { self.writeDebugLog(value: "Open Loop: recommended temp. temp time > bg time, was not enacted") }
                             } else {
-                                LoopStatusLabel.text = "↻"
+                                //Auggie adding time since FAX loop for closer tracking on the main screen
+                                //LoopStatusLabel.text = "↻"
+                                LoopStatusLabel.text = String(format: "%.0f%", (TimeInterval(Date().timeIntervalSince1970) - lastLoopTime) / 60) + "m  ↻"
                                 latestLoopStatusString = "↻"
                                 if UserDefaultsRepository.debugLog.value { self.writeDebugLog(value: "Looping: recommended temp, but temp time is < bg time and/or was enacted") }
                             }
                         }
                     } else {
-                        LoopStatusLabel.text = "↻"
+                        //Auggie adding time since FAX loop for closer tracking on the main screen
+                        //LoopStatusLabel.text = "↻"
+                        LoopStatusLabel.text = String(format: "%.0f%", (TimeInterval(Date().timeIntervalSince1970) - lastLoopTime) / 60) + "m  ↻"
                         latestLoopStatusString = "↻"
                         if UserDefaultsRepository.debugLog.value { self.writeDebugLog(value: "Looping: no recommended temp") }
                     }
                     
                 }
-                
                 if ((TimeInterval(Date().timeIntervalSince1970) - lastLoopTime) / 60) > 15 {
                     LoopStatusLabel.text = "⚠"
                     latestLoopStatusString = "⚠"
@@ -602,7 +657,9 @@ extension MainViewController {
         
         var oText = "" as String
         currentOverride = 1.0
-        if let lastOverride = lastDeviceStatus?["override"] as! [String : AnyObject]? {
+        //Auggie changed "override" to sensitivityRatio to match FAX data
+        //Auggie uses the sensititivty ratio (as a percent) in place of the traditional loop override %
+        if let lastOverride = lastDeviceStatus?["sensitivityRatio"] as! [String : AnyObject]? {
             if let lastOverrideTime = formatter.date(from: (lastOverride["timestamp"] as! String))?.timeIntervalSince1970  {
             }
             if lastOverride["active"] as! Bool {
@@ -617,6 +674,8 @@ extension MainViewController {
                     oText += "100%"
                 }
                 oText += " ("
+                //Auggie need to do work here to show the temp target min/max values
+                //Auggie note to self: find targetTop and targetBottom in treatments json under eventType Temporary Target
                 let minValue = lastCorrection["minValue"] as! Double
                 let maxValue = lastCorrection["maxValue"] as! Double
                 oText += bgUnits.toDisplayUnits(String(minValue)) + "-" + bgUnits.toDisplayUnits(String(maxValue)) + ")"
@@ -624,7 +683,7 @@ extension MainViewController {
                 tableData[3].value =  oText
             }
         }
-        
+
         infoTable.reloadData()
         
         // Start the timer based on the timestamp
@@ -732,8 +791,10 @@ extension MainViewController {
     // NS Sage Web Call
     func webLoadNSSage() {
         if UserDefaultsRepository.debugLog.value { self.writeDebugLog(value: "Download: SAGE") }
-        
-        let lastDateString = dateTimeUtils.nowMinus10DaysTimeInterval()
+        //Auggie using a new nowMinus20DaysTimeInterval function to allow us to look further back in time
+        //Not really any reason to limit this to 20, could just as easily go higher
+        //Should also really parameterize this and pick a better name (followed the nowMinus10Days initial function, but can improve)
+        let lastDateString = dateTimeUtils.nowMinus20DaysTimeInterval()
         let urlUser = UserDefaultsRepository.url.value
         var urlString = urlUser + "/api/v1/treatments.json?find[eventType]=Sensor%20Start&find[created_at][$gte]=" + lastDateString + "&count=1"
         if token != "" {
@@ -854,18 +915,45 @@ extension MainViewController {
             return
         }
         if jsonDeviceStatus[keyPath: "message"] != nil { return }
-        let basal = try jsonDeviceStatus[keyPath: "store.default.basal"] as! NSArray
-        basalProfile.removeAll()
-        for i in 0..<basal.count {
-            let dict = basal[i] as! Dictionary<String, Any>
-            do {
-                let thisValue = try dict[keyPath: "value"] as! Double
-                let thisTime = dict[keyPath: "time"] as! String
-                let thisTimeAsSeconds = dict[keyPath: "timeAsSeconds"] as! Double
-                let entry = basalProfileStruct(value: thisValue, time: thisTime, timeAsSeconds: thisTimeAsSeconds)
-                basalProfile.append(entry)
-            } catch {
-               if UserDefaultsRepository.debugLog.value { self.writeDebugLog(value: "ERROR: profile wrapped in quotes") }
+        
+        //Auggie handling FAX responses rather than Loop Classic
+        //Auggie - added this as an IF statement, it really should be a try/catch though I think
+        //Auggie wrapped this in an if because the profle seemed to switch back and forth between Default and default randomly
+        
+        if jsonDeviceStatus[keyPath: "store.default.basal"] != nil {
+            let basal = try jsonDeviceStatus[keyPath: "store.default.basal"] as! NSArray
+            basalProfile.removeAll()
+            for i in 0..<basal.count {
+                let dict = basal[i] as! Dictionary<String, Any>
+                do {
+                    let thisValue = try dict[keyPath: "value"] as! Double
+                    let thisTime = dict[keyPath: "time"] as! String
+                    let thisTimeAsSeconds = dict[keyPath: "timeAsSeconds"] as! Double
+                    let entry = basalProfileStruct(value: thisValue, time: thisTime, timeAsSeconds: thisTimeAsSeconds)
+                    basalProfile.append(entry)
+                } catch {
+                    if UserDefaultsRepository.debugLog.value { self.writeDebugLog(value: "ERROR: profile wrapped in quotes") }
+                }
+            }
+        }
+        //Auggie - added this as an ELSE statement, it really should be a try/catch though I think
+        //Auggie handling FAX responses rather than Loop Classic
+        //Auggie - added this as an IF statement, it really should be a try/catch though I think
+        //Auggie wrapped this in an if because the profle seemed to switch back and forth between Default and default randomly
+        else {
+            let basal = try jsonDeviceStatus[keyPath: "store.Default.basal"] as! NSArray
+            basalProfile.removeAll()
+            for i in 0..<basal.count {
+                let dict = basal[i] as! Dictionary<String, Any>
+                do {
+                    let thisValue = try dict[keyPath: "value"] as! Double
+                    let thisTime = dict[keyPath: "time"] as! String
+                    let thisTimeAsSeconds = dict[keyPath: "timeAsSeconds"] as! Double
+                    let entry = basalProfileStruct(value: thisValue, time: thisTime, timeAsSeconds: thisTimeAsSeconds)
+                    basalProfile.append(entry)
+                } catch {
+                    if UserDefaultsRepository.debugLog.value { self.writeDebugLog(value: "ERROR: profile wrapped in quotes") }
+                }
             }
         }
         
@@ -951,6 +1039,10 @@ extension MainViewController {
             updateBasalScheduledGraph()
         }
         
+        //Auggie work to do here - check these out for FAX at some point
+        let target_top = try jsonDeviceStatus[keyPath: "store.default.target_high"]
+        let target_botom = try jsonDeviceStatus[keyPath: "store.default.target_low"]
+        
     }
     
     // NS Treatments Web Call
@@ -1022,7 +1114,8 @@ extension MainViewController {
                     carbs.append(entry!)
                 case "Carb Correction":
                     carbs.append(entry!)
-                case "Temporary Override":
+                //Auggie "Temporary Override" changed to "Temporary Target" for FAX
+                case "Temporary Target":
                     temporaryOverride.append(entry!)
                 case "Note":
                     note.append(entry!)
@@ -1740,6 +1833,8 @@ extension MainViewController {
             guard let enteredBy = currentEntry?["enteredBy"] as? String else { continue }
             guard let reason = currentEntry?["reason"] as? String else { continue }
             
+            
+            /* Auggie commented out and replaced with below for FAX
             var range: [Int] = []
             if let ranges = currentEntry?["correctionRange"] as? [Int] {
                 if ranges.count == 2 {
@@ -1750,6 +1845,15 @@ extension MainViewController {
                 }
                 
             }
+            */
+            
+            //Auggie for FAX ranges
+            var range: [Int] = []
+            guard let low = currentEntry?["targetBottom"] as? Int else { continue }
+            guard let high = currentEntry?["targetTop"] as? Int else { continue }
+            range.append(low)
+            range.append(high)
+            
                         
             let endDate = dateTimeStamp + (duration)
 

@@ -23,7 +23,7 @@ There are more detailed instructions in LoopDocs for building Loop with Github A
 
 ## Setup Github
 1. Create a [new empty repository](https://github.com/new) titled `Match-Secrets`. It should be private.
-1. Fork https://github.com/Jon-b-m/freeaps into your account. If you already have a fork of Loop Follow in GitHub, you can't make another one. You can continue to work with your existing fork, or delete that from GitHub and then and fork https://github.com/Jon-b-m/freeaps.
+1. Fork https://github.com/jonfawcett/LoopFollow into your account. If you already have a fork of Loop Follow in GitHub, you can't make another one. You can continue to work with your existing fork, or delete that from GitHub and then and fork https://github.com/jonfawcett/LoopFollow.
 1. Create a [new personal access token](https://github.com/settings/tokens/new):
     * Enter a name for your token. Something like "FastLane Access Token".
     * 30 days is fine, or you can select longer if you'd like.

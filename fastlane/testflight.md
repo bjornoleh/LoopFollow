@@ -8,6 +8,8 @@ Note that TestFlight requires apple id accounts 13 years or older. This can be c
 
 This method for building without a Mac was ported from Loop. If you have used this method for Loop or one of the other DIY apps (Loop Caregiver, Loop Follow, Xdrip4iOS, FreeAPS X), some of the steps can be re-used and the full set of instructions does not need to be repeated. This will be mentioned in relevant sections below.
 
+There are more detailed instructions in LoopDocs for doing Browser Builds of Loop and other apps, including troubleshooting and build errors. Please refer to [LoopDocs](https://loopkit.github.io/loopdocs/gh-actions/gh-other-apps/) for more details.
+
 ## Prerequisites
 
 * A [github account](https://github.com/signup). The free level comes with plenty of storage and free compute time to build Loop Follow, multiple times a day, if you wanted to.
@@ -54,6 +56,7 @@ If you have previously built Loop or another app using the "browser build" metho
 
 1. Click on the "Actions" tab of your Loop Follow repository.
 1. Select "1. Validate Secrets".
+1. Click "Run Workflow", and tap the green button.
 1. Wait, and within a minute or two you should see a green checkmark indicating the workflow succeeded.
 1. The workflow will check if the required secrets are added and that they are correctly formatted. If errors are detected, please check the run log for details.
 

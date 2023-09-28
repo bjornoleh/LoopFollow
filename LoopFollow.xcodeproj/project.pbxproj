@@ -1060,7 +1060,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.$(unique_id).LoopFollow";
+				PRODUCT_BUNDLE_IDENTIFIER = com.244D5GDCJ8.LoopFollow2;
 				PRODUCT_NAME = "Loop Follow";
 				SUPPORTS_MACCATALYST = YES;
 				SWIFT_VERSION = 5.0;

@@ -972,7 +972,7 @@ extension MainViewController {
     func webLoadNSSage() {
         if UserDefaultsRepository.debugLog.value { self.writeDebugLog(value: "Download: SAGE") }
         
-        let lastDateString = dateTimeUtils.nowMinus10DaysTimeInterval()
+        let lastDateString = dateTimeUtils.nowMinus60DaysTimeInterval()
         let urlUser = UserDefaultsRepository.url.value
         var urlString = urlUser + "/api/v1/treatments.json?find[eventType]=Sensor%20Start&find[created_at][$gte]=" + lastDateString + "&count=1"
         if token != "" {

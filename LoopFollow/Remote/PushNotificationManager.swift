@@ -36,12 +36,36 @@ class PushNotificationManager {
         self.bundleId = Storage.shared.bundleId.value
     }
 
-    func sendBolusPushNotification(commandType: String, bolusAmount: HKQuantity, completion: @escaping (Bool, String?) -> Void) {
+    func sendOverridePushNotification(override: ProfileManager.TrioOverride, completion: @escaping (Bool, String?) -> Void) {
+        let message = PushMessage(
+            user: user,
+            commandType: .startOverride,
+            sharedSecret: sharedSecret,
+            timestamp: Date().timeIntervalSince1970,
+            overrideName: override.name
+        )
+
+        sendPushNotification(message: message, completion: completion)
+    }
+
+    func sendCancelOverridePushNotification(completion: @escaping (Bool, String?) -> Void) {
+        let message = PushMessage(
+            user: user,
+            commandType: .cancelOverride,
+            sharedSecret: sharedSecret,
+            timestamp: Date().timeIntervalSince1970,
+            overrideName: nil
+        )
+
+        sendPushNotification(message: message, completion: completion)
+    }
+
+    func sendBolusPushNotification(bolusAmount: HKQuantity, completion: @escaping (Bool, String?) -> Void) {
         let bolusAmount = Decimal(bolusAmount.doubleValue(for: .internationalUnit()))
 
         let message = PushMessage(
             user: user,
-            commandType: commandType,
+            commandType: .bolus,
             bolusAmount: bolusAmount,
             sharedSecret: sharedSecret,
             timestamp: Date().timeIntervalSince1970
@@ -56,7 +80,7 @@ class PushNotificationManager {
 
         let message = PushMessage(
             user: user,
-            commandType: "temp_target",
+            commandType: .tempTarget,
             bolusAmount: nil,
             target: targetValue,
             duration: durationValue,
@@ -70,7 +94,7 @@ class PushNotificationManager {
     func sendCancelTempTargetPushNotification(completion: @escaping (Bool, String?) -> Void) {
         let message = PushMessage(
             user: user,
-            commandType: "cancel_temp_target",
+            commandType: .cancelTempTarget,
             sharedSecret: sharedSecret,
             timestamp: Date().timeIntervalSince1970
         )
@@ -85,7 +109,7 @@ class PushNotificationManager {
 
         let message = PushMessage(
             user: user,
-            commandType: "meal",
+            commandType: .meal,
             carbs: carbsValue,
             protein: proteinValue,
             fat: fatValue,

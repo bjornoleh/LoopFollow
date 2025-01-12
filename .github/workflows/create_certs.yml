@@ -25,10 +25,23 @@ jobs:
       # Sync the GitHub runner clock with the Windows time server (workaround as suggested in https://github.com/actions/runner/issues/2996)
       - name: Sync clock
         run: sudo sntp -sS time.windows.com
-        
+                    
       # Create or update certificates for app
       - name: Create Certificates
-        run: fastlane certs
+        run: |
+          echo "Running Fastlane certs lane..."
+          bundle exec fastlane certs 2>&1 | tee output.log
+
+          # Check Fastlane output and annotate
+          if grep -q "Provisioning profiles are up to date" output.log; then
+            echo "::notice title=Provisioning Profiles::All profiles are valid and up-to-date."
+          elif grep -q "Successfully created new provisioning profile" output.log; then
+            echo "::notice title=Provisioning Profiles::New profiles have been created."
+          elif grep -q "Updating provisioning profile" output.log; then
+            echo "::notice title=Provisioning Profiles::Profiles have been updated to match the latest configuration."
+          else
+            echo "::notice title=Provisioning Profiles::Completed, but no specific action could be determined."
+          fi
         env:
           TEAMID: ${{ secrets.TEAMID }}
           GH_PAT: ${{ secrets.GH_PAT }}

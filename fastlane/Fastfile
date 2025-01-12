@@ -139,7 +139,6 @@ platform :ios do
   desc "Provision Certificates"
   lane :certs do
     setup_ci if ENV['CI']
-    ENV["MATCH_READONLY"] = false.to_s
     
     app_store_connect_api_key(
       key_id: "#{FASTLANE_KEY_ID}",
@@ -147,14 +146,42 @@ platform :ios do
       key_content: "#{FASTLANE_KEY}"
     )
     
-    match(
-      type: "appstore",
-      force: false, # Only update profiles when necessary
-      git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
-      app_identifier: [
-        "com.#{TEAMID}.LoopFollow",
-      ]
-    )
+    # Use readonly mode to detect issues first
+    begin
+      ENV["MATCH_READONLY"] = true.to_s
+      match(
+        type: "appstore",
+        force: false,
+        git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
+        app_identifier: [
+          "com.#{TEAMID}.loopkit.Loop", 
+          "com.#{TEAMID}.loopkit.Loop.statuswidget", 
+          "com.#{TEAMID}.loopkit.Loop.LoopWatch.watchkitextension", 
+          "com.#{TEAMID}.loopkit.Loop.LoopWatch", 
+          "com.#{TEAMID}.loopkit.Loop.Loop-Intent-Extension",
+          "com.#{TEAMID}.loopkit.Loop.LoopWidgetExtension",
+        ]
+      )
+      UI.message("Provisioning profiles are valid and up-to-date.")
+    rescue => e
+      # Fallback to update profiles if an issue is detected
+      UI.message("Profiles are out of sync or invalid. Updating...")
+      ENV["MATCH_READONLY"] = false.to_s
+      match(
+        type: "appstore",
+        force: true,
+        git_basic_authorization: Base64.strict_encode64("#{GITHUB_REPOSITORY_OWNER}:#{GH_PAT}"),
+        app_identifier: [
+          "com.#{TEAMID}.loopkit.Loop", 
+          "com.#{TEAMID}.loopkit.Loop.statuswidget", 
+          "com.#{TEAMID}.loopkit.Loop.LoopWatch.watchkitextension", 
+          "com.#{TEAMID}.loopkit.Loop.LoopWatch", 
+          "com.#{TEAMID}.loopkit.Loop.Loop-Intent-Extension",
+          "com.#{TEAMID}.loopkit.Loop.LoopWidgetExtension",
+        ]
+      )
+      UI.message("Provisioning profiles have been updated.")
+    end
   end
 
   desc "Validate Secrets"

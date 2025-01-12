@@ -33,12 +33,12 @@ jobs:
           bundle exec fastlane certs 2>&1 | tee output.log
 
           # Check Fastlane output and annotate
-          if grep -q "Provisioning profiles are up to date" output.log; then
+          if grep -q "Provisioning profiles are valid and up-to-date" output.log; then
             echo "::notice title=Provisioning Profiles::All profiles are valid and up-to-date."
-          elif grep -q "Successfully created new provisioning profile" output.log; then
-            echo "::notice title=Provisioning Profiles::New profiles have been created."
-          elif grep -q "Updating provisioning profile" output.log; then
-            echo "::notice title=Provisioning Profiles::Profiles have been updated to match the latest configuration."
+          elif grep -q "Profiles are out of sync or invalid. Updating..." output.log; then
+            echo "::notice title=Provisioning Profiles::Profiles were out of sync and have been updated."
+          elif grep -q "Provisioning profiles have been updated." output.log; then
+            echo "::notice title=Provisioning Profiles::Profiles have been successfully updated."
           else
             echo "::notice title=Provisioning Profiles::Completed, but no specific action could be determined."
           fi

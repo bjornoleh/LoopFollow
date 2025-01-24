@@ -8,6 +8,7 @@
 
 import SwiftUI
 import HealthKit
+import LocalAuthentication
 
 struct MealView: View {
     @Environment(\.presentationMode) private var presentationMode
@@ -119,6 +120,10 @@ struct MealView: View {
                                 displayedComponents: .hourAndMinute
                             )
                             .datePickerStyle(CompactDatePickerStyle())
+
+                            if bolusAmount.doubleValue(for: .internationalUnit()) > 0 {
+                                Text("Note: The meal will be scheduled, but the bolus is enacted immediately.")
+                            }
                         }
                     }
 
@@ -137,9 +142,10 @@ struct MealView: View {
                                         fat.doubleValue(for: .gram()) != 0 else {
                                     return
                                 }
-
-                                alertType = .confirmMeal
-                                showAlert = true
+                                if !showAlert {
+                                    alertType = .confirmMeal
+                                    showAlert = true
+                                }
                             }
                         },
                         isDisabled: isButtonDisabled
@@ -192,7 +198,15 @@ struct MealView: View {
                         message: Text(message),
                         primaryButton: .default(Text("Confirm"), action: {
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                sendMealCommand()
+                                if bolusAmount > 0 {
+                                    authenticateUser { success in
+                                        if success {
+                                            sendMealCommand()
+                                        }
+                                    }
+                                } else {
+                                    sendMealCommand()
+                                }
                             }
                         }),
                         secondaryButton: .cancel()
@@ -237,9 +251,10 @@ struct MealView: View {
             let calendar = Calendar.current
             let now = Date()
             let selectedDateComponents = calendar.dateComponents([.hour, .minute], from: selectedTime)
+            let currentSecond = calendar.component(.second, from: now)
             scheduledDate = calendar.date(bySettingHour: selectedDateComponents.hour ?? 0,
                                           minute: selectedDateComponents.minute ?? 0,
-                                          second: 0,
+                                          second: currentSecond,
                                           of: now) ?? now
         }
 
@@ -279,5 +294,30 @@ struct MealView: View {
         alertMessage = message
         alertType = .validationError
         showAlert = true
+    }
+
+    private func authenticateUser(completion: @escaping (Bool) -> Void) {
+        let context = LAContext()
+        var error: NSError?
+
+        let reason = "Confirm your identity to send bolus."
+
+        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
+            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, _ in
+                DispatchQueue.main.async {
+                    completion(success)
+                }
+            }
+        } else if context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) {
+            context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { success, _ in
+                DispatchQueue.main.async {
+                    completion(success)
+                }
+            }
+        } else {
+            DispatchQueue.main.async {
+                completion(false)
+            }
+        }
     }
 }

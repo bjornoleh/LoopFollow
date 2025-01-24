@@ -20,15 +20,13 @@ extension MainViewController {
     
     
     func checkAlarms(bgs: [ShareGlucoseData]) {
-        if UserDefaultsRepository.debugLog.value { self.writeDebugLog(value: "Checking Alarms") }
         // Don't check or fire alarms within 1 minute of prior alarm
         if checkAlarmTimer.isValid {  return }
         
         let date = Date()
         let now = date.timeIntervalSince1970
         let currentBG = bgs[bgs.count - 1].sgv
-        //let lastBG = bgs[bgs.count - 2].sgv // not used, protect index out of bounds
-        
+
         var skipZero = false
         if UserDefaultsRepository.alertIgnoreZero.value && currentBG == 0 {
             skipZero = true
@@ -339,12 +337,12 @@ extension MainViewController {
         
         //check for not looping alert
         if IsNightscoutEnabled() {
+            LogManager.shared.log(category: .alarm, message: "Checking NotLooping LastLoopTime was \(UserDefaultsRepository.alertLastLoopTime.value) that gives a diff of: \(Double(dateTimeUtils.getNowTimeIntervalUTC() - UserDefaultsRepository.alertLastLoopTime.value))", isDebug: true)
             if UserDefaultsRepository.alertNotLoopingActive.value
                 && !UserDefaultsRepository.alertNotLoopingIsSnoozed.value
                 && (Double(dateTimeUtils.getNowTimeIntervalUTC() - UserDefaultsRepository.alertLastLoopTime.value) >= Double(UserDefaultsRepository.alertNotLooping.value * 60))
                 && UserDefaultsRepository.alertLastLoopTime.value > 0 {
                 
-                var trigger = true
                 if (UserDefaultsRepository.alertNotLoopingUseLimits.value
                     && (
                         (Float(currentBG) >= UserDefaultsRepository.alertNotLoopingUpperLimit.value
@@ -363,6 +361,7 @@ extension MainViewController {
                         if !UserDefaultsRepository.alertNotLoopingDayTimeAudible.value { playSound = false }
                     }
                     triggerAlarm(sound: UserDefaultsRepository.alertNotLoopingSound.value, snooozedBGReadingTime: nil, overrideVolume: UserDefaultsRepository.overrideSystemOutputVolume.value, numLoops: numLoops, snoozeTime: UserDefaultsRepository.alertNotLoopingSnooze.value, audio: playSound)
+                    LogManager.shared.log(category: .alarm, message: "!!!Not Looping!!!")
                     return
                 }
             }
@@ -578,7 +577,63 @@ extension MainViewController {
                 lastOverrideAlarm = now
         }
     }
-    
+
+    func checkTempTargetAlarms() {
+        if UserDefaultsRepository.alertSnoozeAllIsSnoozed.value { return }
+
+        let recentTempTarget = tempTargetGraphData.last
+        let recentStart: TimeInterval = recentTempTarget?.date ?? 0
+        let recentEnd: TimeInterval = recentTempTarget?.endDate ?? 0
+        let now = dateTimeUtils.getNowTimeIntervalUTC()
+
+        var triggerStart = false
+        var triggerEnd = false
+
+        // Trigger newly started temp target
+        if now - recentStart > 0 && now - recentStart <= (15 * 60) && recentStart > lastTempTargetAlarm {
+            triggerStart = true
+        } else if now - recentEnd > 0 && now - recentEnd <= (15 * 60) && recentEnd > lastTempTargetAlarm {
+            triggerEnd = true
+        } else {
+            return
+        }
+
+        var numLoops = 0
+        var playSound = true
+
+        // Check Temp Target Start Alarm
+        if UserDefaultsRepository.alertTempTargetStart.value && !UserDefaultsRepository.alertTempTargetStartIsSnoozed.value && triggerStart {
+            AlarmSound.whichAlarm = "Temp Target Started"
+            // Determine if it is day or night and what should happen
+            if UserDefaultsRepository.nightTime.value {
+                if UserDefaultsRepository.alertTempTargetStartNightTime.value { numLoops = -1 }
+                if !UserDefaultsRepository.alertTempTargetStartNightTimeAudible.value { playSound = false }
+            } else {
+                if UserDefaultsRepository.alertTempTargetStartDayTime.value { numLoops = -1 }
+                if !UserDefaultsRepository.alertTempTargetStartDayTimeAudible.value { playSound = false }
+            }
+            triggerOneTimeAlarm(sound: UserDefaultsRepository.alertTempTargetStartSound.value, overrideVolume: UserDefaultsRepository.overrideSystemOutputVolume.value, numLoops: numLoops, audio: playSound)
+            lastTempTargetStartTime = recentStart
+            lastTempTargetAlarm = now
+        }
+
+        // Check Temp Target End Alarm
+        else if UserDefaultsRepository.alertTempTargetEnd.value && !UserDefaultsRepository.alertTempTargetEndIsSnoozed.value && triggerEnd {
+            AlarmSound.whichAlarm = "Temp Target Ended"
+            // Determine if it is day or night and what should happen
+            if UserDefaultsRepository.nightTime.value {
+                if UserDefaultsRepository.alertTempTargetEndNightTime.value { numLoops = -1 }
+                if !UserDefaultsRepository.alertTempTargetEndNightTimeAudible.value { playSound = false }
+            } else {
+                if UserDefaultsRepository.alertTempTargetEndDayTime.value { numLoops = -1 }
+                if !UserDefaultsRepository.alertTempTargetEndDayTimeAudible.value { playSound = false }
+            }
+            triggerOneTimeAlarm(sound: UserDefaultsRepository.alertTempTargetEndSound.value, overrideVolume: UserDefaultsRepository.overrideSystemOutputVolume.value, numLoops: numLoops, audio: playSound)
+            lastTempTargetEndTime = recentEnd
+            lastTempTargetAlarm = now
+        }
+    }
+
     func triggerOneTimeAlarm(sound: String, overrideVolume: Bool, numLoops: Int, audio: Bool = true)
     {
         var audioDuringCall = true
@@ -788,6 +843,18 @@ extension MainViewController {
             alarms.reloadSnoozeTime(key: "alertRecBolusSnoozedTime", setNil: true)
             alarms.reloadIsSnoozed(key: "alertRecBolusIsSnoozed", value: false)
         }
+        if date > UserDefaultsRepository.alertTempTargetStartSnoozedTime.value ?? date {
+            UserDefaultsRepository.alertTempTargetStartSnoozedTime.setNil(key: "alertTempTargetStartSnoozedTime")
+            UserDefaultsRepository.alertTempTargetStartIsSnoozed.value = false
+            alarms.reloadSnoozeTime(key: "alertTempTargetStartSnoozedTime", setNil: true)
+            alarms.reloadIsSnoozed(key: "alertTempTargetStartIsSnoozed", value: false)
+        }
+        if date > UserDefaultsRepository.alertTempTargetEndSnoozedTime.value ?? date {
+            UserDefaultsRepository.alertTempTargetEndSnoozedTime.setNil(key: "alertTempTargetEndSnoozedTime")
+            UserDefaultsRepository.alertTempTargetEndIsSnoozed.value = false
+            alarms.reloadSnoozeTime(key: "alertTempTargetEndSnoozedTime", setNil: true)
+            alarms.reloadIsSnoozed(key: "alertTempTargetEndIsSnoozed", value: false)
+        }
     }
 
     func checkQuietHours() {
@@ -893,7 +960,8 @@ extension MainViewController {
         // Speak always
         if always {
             speakBG(currentValue: currentValue, previousValue: previousValue)
-            print("Speaking because 'Always' is enabled.")
+            LogManager.shared.log(category: .general, message: "Speaking because 'Always' is enabled.", isDebug: true)
+
             return
         }
         
@@ -901,7 +969,7 @@ extension MainViewController {
         if speakLowBG {
             if currentValue <= Int(lowThreshold) || previousValue <= Int(lowThreshold) {
                 speakBG(currentValue: currentValue, previousValue: previousValue)
-                print("Speaking because of 'Low' condition.")
+                LogManager.shared.log(category: .general, message: "Speaking because of 'Low' condition.", isDebug: true)
                 return
             }
         }
@@ -917,7 +985,7 @@ extension MainViewController {
                 currentValue <= Int(lowThreshold) || previousValue <= Int(lowThreshold) ||
                 ((currentValue <= Int(highThreshold) && (previousValue - currentValue) >= Int(fastDropDelta))) {
                 speakBG(currentValue: currentValue, previousValue: previousValue)
-                print("Speaking because of 'Proactive Low' condition. Predictive trigger: \(predictiveTrigger)")
+                LogManager.shared.log(category: .general, message: "Speaking because of 'Proactive Low' condition. Predictive trigger: \(predictiveTrigger)", isDebug: true)
                 return
             }
         }
@@ -926,12 +994,12 @@ extension MainViewController {
         if speakHighBG {
             if currentValue >= Int(highThreshold) || previousValue >= Int(highThreshold) {
                 speakBG(currentValue: currentValue, previousValue: previousValue)
-                print("Speaking because of 'High' condition.")
+                LogManager.shared.log(category: .general, message: "Speaking because of 'High' condition.", isDebug: true)
                 return
             }
         }
-        
-        print("No condition met for speaking.")
+
+        LogManager.shared.log(category: .general, message: "No condition met for speaking.", isDebug: true)
     }
     
     struct AnnouncementTexts {
@@ -997,7 +1065,7 @@ extension MainViewController {
             try audioSession.setCategory(.playback, mode: .default)
             try audioSession.setActive(true)
         } catch {
-            print("Failed to set up audio session: \(error)")
+            LogManager.shared.log(category: .alarm, message: "speakBG, Failed to set up audio session: \(error)")
         }
         
         // Get the current time
@@ -1007,7 +1075,7 @@ extension MainViewController {
         // If `lastSpeechTime` is `nil` (i.e., this is the first time `speakBG` is being called), use `Date.distantPast` as the default
         // value to ensure that the `guard` statement passes and the announcement is made.
         guard currentTime.timeIntervalSince(lastSpeechTime ?? .distantPast) >= 30 else {
-            print("Repeated calls to speakBG detected!")
+            LogManager.shared.log(category: .general, message: "Repeated calls to speakBG detected!", isDebug: true)
             return
         }
 

@@ -11,32 +11,37 @@ extension MainViewController {
     func DeviceStatusOpenAPS(formatter: ISO8601DateFormatter, lastDeviceStatus: [String: AnyObject]?, lastLoopRecord: [String: AnyObject]) {
         if let createdAtString = lastDeviceStatus?["created_at"] as? String,
            let lastLoopTime = formatter.date(from: createdAtString)?.timeIntervalSince1970 {
-            UserDefaultsRepository.alertLastLoopTime.value = lastLoopTime
             ObservableUserDefaults.shared.device.value = lastDeviceStatus?["device"] as? String ?? ""
             if lastLoopRecord["failureReason"] != nil {
                 LoopStatusLabel.text = "X"
                 latestLoopStatusString = "X"
+                evaluateNotLooping(lastLoopTime: UserDefaultsRepository.alertLastLoopTime.value)
             } else {
-                guard let enacted = lastLoopRecord["enacted"] as? [String: AnyObject] else {
+                guard let enactedOrSuggested = lastLoopRecord["enacted"] as? [String: AnyObject] ?? lastLoopRecord["suggested"] as? [String: AnyObject] else {
                     LoopStatusLabel.text = "↻"
                     latestLoopStatusString = "↻"
-                    evaluateNotLooping(lastLoopTime: lastLoopTime)
+                    evaluateNotLooping(lastLoopTime: UserDefaultsRepository.alertLastLoopTime.value)
                     return
                 }
-                let wasEnacted = true
 
-                var determinedUnit: HKUnit = .milligramsPerDeciliter
-
-                // Determine the unit based on the threshold value since no unit is provided
-                if let enactedTargetValue = enacted["threshold"] as? Double {
-                    if enactedTargetValue < 40 {
-                        determinedUnit = .millimolesPerLiter
-                    }
+                var wasEnacted : Bool
+                if let enacted = lastLoopRecord["enacted"] as? [String: AnyObject] {
+                    wasEnacted = NSDictionary(dictionary: enacted).isEqual(to: enactedOrSuggested)
+                } else {
+                    wasEnacted = false
                 }
 
-                // Updated
-                if let enactedTimestamp = enacted["timestamp"] as? String,
-                   let enactedTime = formatter.date(from: enactedTimestamp)?.timeIntervalSince1970 {
+                if wasEnacted {
+                    UserDefaultsRepository.alertLastLoopTime.value = lastLoopTime
+                    LogManager.shared.log(category: .alarm, message: "New LastLoopTime: \(lastLoopTime)", isDebug: true)
+
+                    evaluateNotLooping(lastLoopTime: UserDefaultsRepository.alertLastLoopTime.value)
+                } else {
+                    LogManager.shared.log(category: .alarm, message: "Last devicestatus was not enacted")
+                }
+
+                if let timestamp = enactedOrSuggested["timestamp"] as? String,
+                   let enactedTime = formatter.date(from: timestamp)?.timeIntervalSince1970 {
                     let formattedTime = Localizer.formatTimestampToLocalString(enactedTime)
                     infoManager.updateInfoData(type: .updated, value: formattedTime)
                 }
@@ -44,8 +49,12 @@ extension MainViewController {
                 // ISF
                 let profileISF = profileManager.currentISF()
                 var enactedISF: HKQuantity?
-                if let enactedISFValue = enacted["ISF"] as? Double {
-                    enactedISF = HKQuantity(unit: determinedUnit, doubleValue: enactedISFValue)
+                if let enactedISFValue = enactedOrSuggested["ISF"] as? Double {
+                    var determinedISFUnit: HKUnit = .milligramsPerDeciliter
+                    if enactedISFValue < 15 {
+                        determinedISFUnit = .millimolesPerLiter
+                    }
+                    enactedISF = HKQuantity(unit: determinedISFUnit, doubleValue: enactedISFValue)
                 }
                 if let profileISF = profileISF, let enactedISF = enactedISF, profileISF != enactedISF {
                     infoManager.updateInfoData(type: .isf, firstValue: profileISF, secondValue: enactedISF, separator: .arrow)
@@ -56,7 +65,7 @@ extension MainViewController {
                 // Carb Ratio (CR)
                 let profileCR = profileManager.currentCarbRatio()
                 var enactedCR: Double?
-                if let reasonString = enacted["reason"] as? String {
+                if let reasonString = enactedOrSuggested["reason"] as? String {
                     let pattern = "CR: (\\d+(?:\\.\\d+)?)"
                     if let regex = try? NSRegularExpression(pattern: pattern) {
                         let nsString = reasonString as NSString
@@ -80,13 +89,33 @@ extension MainViewController {
                 }
 
                 // COB
-                if let cobMetric = CarbMetric(from: enacted, key: "COB") {
+                if let cobMetric = CarbMetric(from: enactedOrSuggested, key: "COB") {
                     infoManager.updateInfoData(type: .cob, value: cobMetric)
                     latestCOB = cobMetric
+                } else if let reasonString = enactedOrSuggested["reason"] as? String {
+                    // Fallback: Extract COB from reason string
+                    let cobPattern = "COB: (\\d+(?:\\.\\d+)?)"
+                    if let cobRegex = try? NSRegularExpression(pattern: cobPattern),
+                       let cobMatch = cobRegex.firstMatch(in: reasonString, range: NSRange(location: 0, length: reasonString.utf16.count)) {
+                        let cobValueString = (reasonString as NSString).substring(with: cobMatch.range(at: 1))
+                        if let cobValue = Double(cobValueString) {
+                            let tempDict: [String: AnyObject] = ["COB": cobValue as AnyObject]
+                            if let fallbackCobMetric = CarbMetric(from: tempDict, key: "COB") {
+                                infoManager.updateInfoData(type: .cob, value: fallbackCobMetric)
+                                latestCOB = fallbackCobMetric
+                            } else {
+                                print("Failed to create CarbMetric from extracted COB value: \(cobValue)")
+                            }
+                        } else {
+                            print("Invalid COB value extracted from reason string: \(cobValueString)")
+                        }
+                    } else {
+                        print("COB pattern not found in reason string.")
+                    }
                 }
 
                 // Insulin Required
-                if let insulinReqMetric = InsulinMetric(from: enacted, key: "insulinReq") {
+                if let insulinReqMetric = InsulinMetric(from: enactedOrSuggested, key: "insulinReq") {
                     infoManager.updateInfoData(type: .recBolus, value: insulinReqMetric)
                     UserDefaultsRepository.deviceRecBolus.value = insulinReqMetric.value
                 } else {
@@ -94,13 +123,13 @@ extension MainViewController {
                 }
 
                 // Autosens
-                if let sens = enacted["sensitivityRatio"] as? Double {
+                if let sens = enactedOrSuggested["sensitivityRatio"] as? Double {
                     let formattedSens = String(format: "%.0f", sens * 100.0) + "%"
                     infoManager.updateInfoData(type: .autosens, value: formattedSens)
                 }
 
                 // Eventual BG
-                if let eventualBGValue = enacted["eventualBG"] as? Double {
+                if let eventualBGValue = enactedOrSuggested["eventualBG"] as? Double {
                     let eventualBGQuantity = HKQuantity(unit: .milligramsPerDeciliter, doubleValue: eventualBGValue)
                     PredictionLabel.text = Localizer.formatQuantity(eventualBGQuantity)
                 }
@@ -108,8 +137,12 @@ extension MainViewController {
                 // Target
                 let profileTargetHigh = profileManager.currentTargetHigh()
                 var enactedTarget: HKQuantity?
-                if let enactedTargetValue = enacted["current_target"] as? Double {
-                    enactedTarget = HKQuantity(unit: .milligramsPerDeciliter, doubleValue: enactedTargetValue)
+                if let enactedTargetValue = enactedOrSuggested["current_target"] as? Double {
+                    var targetUnit = HKUnit.milligramsPerDeciliter
+                    if enactedTargetValue < 40 {
+                        targetUnit = .millimolesPerLiter
+                    }
+                    enactedTarget = HKQuantity(unit: targetUnit, doubleValue: enactedTargetValue)
                 }
 
                 if let profileTargetHigh = profileTargetHigh, let enactedTarget = enactedTarget {
@@ -126,14 +159,14 @@ extension MainViewController {
                 }
 
                 // TDD
-                if let tddMetric = InsulinMetric(from: enacted, key: "TDD") {
+                if let tddMetric = InsulinMetric(from: enactedOrSuggested, key: "TDD") {
                     infoManager.updateInfoData(type: .tdd, value: tddMetric)
                 }
 
                 let predictioncolor = UIColor.systemGray
                 PredictionLabel.textColor = predictioncolor
                 topPredictionBG = UserDefaultsRepository.minBGScale.value
-                if let predbgdata = enacted["predBGs"] as? [String: AnyObject] {
+                if let predbgdata = enactedOrSuggested["predBGs"] as? [String: AnyObject] {
                     let predictionTypes: [(type: String, colorName: String, dataIndex: Int)] = [
                         ("ZT", "ZT", 12),
                         ("IOB", "Insulin", 13),
@@ -199,7 +232,6 @@ extension MainViewController {
                     latestLoopStatusString = "↻"
                 }
             }
-            evaluateNotLooping(lastLoopTime: lastLoopTime)
         }
     }
 }

@@ -108,7 +108,6 @@ class MainViewController: UIViewController, UITableViewDataSource, ChartViewDele
     var latestMinAgoString = ""
     var latestDeltaString = ""
     var latestLoopStatusString = ""
-    var latestLoopTime: Double = 0
     var latestCOB: CarbMetric?
     var latestBasal = ""
     var latestPumpVolume: Double = 50.0
@@ -147,15 +146,19 @@ class MainViewController: UIViewController, UITableViewDataSource, ChartViewDele
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        if ObservableUserDefaults.shared.device.value != "Trio" && Storage.shared.remoteType.value == .trc {
+            Storage.shared.remoteType.value = .none
+        }
+
         //Migration of UserDefaultsRepository -> Storage handling
         if !UserDefaultsRepository.backgroundRefresh.value {
             Storage.shared.backgroundRefreshType.value = .none
             UserDefaultsRepository.backgroundRefresh.value = true
         }
 
-        // Ensure alertNotLooping has a minimum value of 15.
-        if UserDefaultsRepository.alertNotLooping.value < 15 {
-            UserDefaultsRepository.alertNotLooping.value = 15
+        // Ensure alertNotLooping has a minimum value of 16.
+        if UserDefaultsRepository.alertNotLooping.value < 16 {
+            UserDefaultsRepository.alertNotLooping.value = 16
         }
 
         // Synchronize info types to ensure arrays are the correct size
@@ -584,7 +587,6 @@ class MainViewController: UIViewController, UITableViewDataSource, ChartViewDele
         let direction = self.bgDirectionGraphic(self.bgData[self.bgData.count - 1].direction ?? "")
         
         var eventStartDate = Date(timeIntervalSince1970: self.bgData[self.bgData.count - 1].date)
-        //                if UserDefaultsRepository.debugLog.value { self.writeDebugLog(value: "Calendar start date") }
         var eventEndDate = eventStartDate.addingTimeInterval(60 * 10)
         var  eventTitle = UserDefaultsRepository.watchLine1.value
         if (UserDefaultsRepository.watchLine2.value.count > 1) {
@@ -628,9 +630,7 @@ class MainViewController: UIViewController, UITableViewDataSource, ChartViewDele
             for i in eVDelete! {
                 do {
                     try self.store.remove(i, span: EKSpan.thisEvent, commit: true)
-                    //if UserDefaultsRepository.debugLog.value { self.writeDebugLog(value: "Calendar Delete") }
                 } catch let error {
-                    //if UserDefaultsRepository.debugLog.value { self.writeDebugLog(value: "Error - Calendar Delete") }
                     print(error)
                 }
             }
@@ -647,7 +647,6 @@ class MainViewController: UIViewController, UITableViewDataSource, ChartViewDele
             self.lastCalendarWriteAttemptTime = now
 
             self.lastCalDate = self.bgData[self.bgData.count - 1].date
-            //if UserDefaultsRepository.debugLog.value { self.writeDebugLog(value: "Calendar Write: " + eventTitle) }
             //UserDefaultsRepository.savedEventID.value = event.eventIdentifier //save event id to access this particular event later
         } catch {
             LogManager.shared.log(category: .calendar, message: "Error storing to the calendar")
@@ -659,7 +658,7 @@ class MainViewController: UIViewController, UITableViewDataSource, ChartViewDele
     {
         if UserDefaultsRepository.persistentNotification.value && bgTime > UserDefaultsRepository.persistentNotificationLastBGTime.value && bgData.count > 0 {
             guard let snoozer = self.tabBarController!.viewControllers?[2] as? SnoozeViewController else { return }
-            snoozer.sendNotification(self, bgVal: Localizer.toDisplayUnits(String(bgData[bgData.count - 1].sgv)), directionVal: latestDirectionString, deltaVal: Localizer.toDisplayUnits(String(latestDeltaString)), minAgoVal: latestMinAgoString, alertLabelVal: "Latest BG")
+            snoozer.sendNotification(self, bgVal: Localizer.toDisplayUnits(String(bgData[bgData.count - 1].sgv)), directionVal: latestDirectionString, deltaVal: latestDeltaString, minAgoVal: latestMinAgoString, alertLabelVal: "Latest BG")
         }
     }
 

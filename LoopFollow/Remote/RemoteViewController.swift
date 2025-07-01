@@ -1,6 +1,6 @@
 // LoopFollow
 // RemoteViewController.swift
-// Created by Jonas Björkert on 2024-07-19.
+// Created by Jonas Björkert.
 
 import Combine
 import Foundation
@@ -16,8 +16,8 @@ class RemoteViewController: UIViewController {
         super.viewDidLoad()
 
         cancellable = Publishers.CombineLatest(
-            Storage.shared.remoteType.$value,
-            Storage.shared.device.$value
+            Storage.shared.remoteType.$value.removeDuplicates(),
+            Storage.shared.device.$value.removeDuplicates()
         )
         .sink { [weak self] _, _ in
             DispatchQueue.main.async {

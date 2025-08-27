@@ -1,6 +1,5 @@
 // LoopFollow
 // TreatmentsTask.swift
-// Created by Jonas Björkert.
 
 import Foundation
 
@@ -23,6 +22,6 @@ extension MainViewController {
         WebLoadNSTreatments()
 
         TaskScheduler.shared.rescheduleTask(id: .treatments, to: Date().addingTimeInterval(2 * 60))
-        TaskScheduler.shared.rescheduleTask(id: .alarmCheck, to: Date())
+        TaskScheduler.shared.rescheduleTask(id: .alarmCheck, to: Date().addingTimeInterval(3))
     }
 }

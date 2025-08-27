@@ -1,10 +1,7 @@
 // LoopFollow
 // RemoteViewController.swift
-// Created by Jonas Björkert.
 
 import Combine
-import Foundation
-import HealthKit
 import SwiftUI
 import UIKit
 
@@ -15,17 +12,13 @@ class RemoteViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        cancellable = Publishers.CombineLatest(
-            Storage.shared.remoteType.$value.removeDuplicates(),
-            Storage.shared.device.$value.removeDuplicates()
-        )
-        .sink { [weak self] _, _ in
-            DispatchQueue.main.async {
-                self?.updateView()
+        cancellable = Storage.shared.device.$value
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                DispatchQueue.main.async {
+                    self?.updateView()
+                }
             }
-        }
-
-        updateView()
     }
 
     private func updateView() {
@@ -43,8 +36,6 @@ class RemoteViewController: UIViewController {
             switch Storage.shared.device.value {
             case "Trio":
                 remoteView = AnyView(TrioNightscoutRemoteView())
-            case "Loop":
-                remoteView = AnyView(LoopNightscoutRemoteView())
             default:
                 remoteView = AnyView(NoRemoteView())
             }
@@ -62,6 +53,8 @@ class RemoteViewController: UIViewController {
                 let trioRemoteControlView = TrioRemoteControlView(viewModel: trioRemoteControlViewModel)
                 hostingController = UIHostingController(rootView: AnyView(trioRemoteControlView))
             }
+        } else if remoteType == .loopAPNS {
+            hostingController = UIHostingController(rootView: AnyView(LoopAPNSRemoteView()))
         } else {
             hostingController = UIHostingController(rootView: AnyView(Text("Please select a Remote Type in Settings.")))
         }
@@ -89,6 +82,11 @@ class RemoteViewController: UIViewController {
                 }
             }
         }
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        updateView()
     }
 
     deinit {

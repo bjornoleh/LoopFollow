@@ -1,6 +1,5 @@
 // LoopFollow
 // Observable.swift
-// Created by Jonas Björkert.
 
 import Foundation
 import HealthKit
@@ -33,6 +32,12 @@ class Observable {
     var alertLastLoopTime = ObservableValue<TimeInterval?>(default: nil)
     var deviceRecBolus = ObservableValue<Double?>(default: nil)
     var deviceBatteryLevel = ObservableValue<Double?>(default: nil)
+
+    var settingsPath = ObservableValue<NavigationPath>(default: NavigationPath())
+
+    // MARK: - Loop APNS TOTP Tracking
+
+    var lastSentTOTP = ObservableValue<String?>(default: nil)
 
     private init() {}
 }

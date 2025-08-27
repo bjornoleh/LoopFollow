@@ -1,6 +1,5 @@
 // LoopFollow
 // SettingsViewController.swift
-// Created by Jon Fawcett.
 
 import SwiftUI
 import UIKit
@@ -34,5 +33,11 @@ final class SettingsViewController: UIViewController {
             host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
         host.didMove(toParent: self)
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+
+        Observable.shared.settingsPath.set(NavigationPath())
     }
 }
